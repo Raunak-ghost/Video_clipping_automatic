@@ -1,0 +1,47 @@
+# Pure Python Architecture - Video Clipping Pipeline
+# Replacing n8n with native Python components
+
+# Web framework
+fastapi>=0.109.0
+
+# APScheduler for periodic triggers
+APScheduler>=3.9.0
+
+# Celery for background task queue
+celery>=5.3.0
+
+# Redis (as broker and backend for Celery)
+redis>=5.0.0
+
+# yt-dlp for video downloading
+yt-dlp>=2024.01.0
+
+# Selenium for YouTube session/cookie harvesting (anti-bot infrastructure)
+selenium>=4.20.0
+
+# OpenAI Whisper for transcription
+openai-whisper>=2023.12.0
+
+# vLLM for LLM inference (requires Linux/CUDA C++ build tools; use API/httpx or remote server on Windows)
+# vllm>=0.4.0
+
+
+# FFmpeg (via subprocess, system dependency)
+# ffmpeg must be installed on the system
+
+# Database
+# SQLite (built-in, no package needed)
+# PostgreSQL: psycopg2-binary>=2.9.0 (optional)
+
+# HTTP client for vLLM API and async web requests
+httpx>=0.27.0
+aiohttp>=3.9.0
+
+# Web server
+uvicorn>=0.27.0
+
+
+# Additional utilities
+python-dotenv>=1.0.0
+feedparser>=6.0.0
+schedule>=1.2.0

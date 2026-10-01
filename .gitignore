@@ -1,0 +1,46 @@
+# --- Secrets & credentials (NEVER commit) ---
+config.json
+cookies.txt
+youtube_token.json
+browser_profile/
+*.token
+*.key
+
+# --- Media files (too large for GitHub) ---
+clips/
+downloads/
+*.mp4
+*.webm
+*.mkv
+*.avi
+*.mov
+*.ass
+
+# --- Databases ---
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# --- Caches & generated state ---
+title_cache.json
+migrate_channel_cache.json
+seen_videos.json
+__pycache__/
+*.pyc
+*.pyo
+
+# --- Virtual environment ---
+.venv/
+venv/
+
+# --- Embedded repos / large vendored dirs ---
+pot_provider/
+whisper.cpp/
+
+# --- Logs ---
+*.log
+
+# --- OS junk ---
+Thumbs.db
+.DS_Store

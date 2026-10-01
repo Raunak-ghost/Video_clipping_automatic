@@ -1,0 +1,8 @@
+# Video Clipping - target channels
+# Format: category | channel name | channel_id   (one per line, # = comment)
+tech_news | Marques Brownlee | UCBJycsmduvYEL83R_U4JriQ
+podcasts | Huberman Lab | UC2D2CMWXMOVWx7giW1n3LIg
+podcasts | Diary of a CEO | UCGq-a57w-aPwyi3pW7XLiHw
+gaming | MrBeast | UCX6OQ3DkcsbYNE6H8uQQuVA
+# Add more below, e.g.:
+# gaming | Some Channel | UCxxxxxxxxxxxxxxxxxxxxxx
