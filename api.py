@@ -751,6 +751,11 @@ ADMIN_DASHBOARD_HTML = """<!DOCTYPE html>
         <label>Edit Style</label>
         <select id="modalStyle">
           <option value="subtitles">Subtitles - centered word-by-word captions (9:16)</option>
+          <option value="hormozi">Hormozi - kinetic typography, big center words</option>
+          <option value="podcast">Podcast - dual split-screen speakers</option>
+          <option value="faceless">Faceless - blurred bg + clean lower-thirds</option>
+          <option value="gameplay">Gameplay - top 60% clip / bottom 40% fill</option>
+          <option value="corporate">Corporate - minimal lower-third banner</option>
           <option value="blur">Blur - blurred background vertical (9:16)</option>
           <option value="original">Original - plain trim</option>
         </select>

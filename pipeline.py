@@ -104,9 +104,27 @@ class Pipeline:
             cs = 0
         return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
 
-    def _generate_word_subtitles(self, video_path: str, clip_start: float, clip_end: float, ass_path: Path) -> Path:
-        """Build an ASS subtitle file with 2-3 words per event, centered on screen
-        (Hormozi-style captions). Uses the cached Whisper word timestamps."""
+    # Per-style ASS caption presets (from editing_styles/*.md archetypes).
+    # Keys: font, size, primary colour (ASS &HBBGGRR), outline, alignment, marginV, words/event
+    _CAPTION_PRESETS = {
+        "subtitles": dict(font="Arial", size=80, colour="&H00FFFFFF", outline=6, align=5, margin_v=60, words=3),
+        # Hormozi: big uppercase kinetic words, center screen, yellow accent
+        "hormozi":   dict(font="Impact", size=96, colour="&H00FFFFFF", outline=7, align=5, margin_v=0, words=2),
+        # Podcast: mid-divider captions, smaller, white
+        "podcast":   dict(font="Arial", size=56, colour="&H00FFFFFF", outline=4, align=5, margin_v=0, words=4),
+        # Faceless: clean 2-line lower-third with soft box
+        "faceless":  dict(font="Arial", size=52, colour="&H00FFFFFF", outline=2, align=2, margin_v=140, words=8),
+        # Gameplay: center captions over the 60/40 boundary
+        "gameplay":  dict(font="Arial", size=72, colour="&H00FFFFFF", outline=6, align=5, margin_v=0, words=3),
+        # Corporate: minimal lower-third banner
+        "corporate": dict(font="Arial", size=44, colour="&H00FFFFFF", outline=1, align=2, margin_v=120, words=10),
+    }
+
+    def _generate_word_subtitles(self, video_path: str, clip_start: float, clip_end: float, ass_path: Path, style: str = "subtitles") -> Path:
+        """Build an ASS subtitle file from cached Whisper word timestamps.
+
+        Formatting is driven by _CAPTION_PRESETS[style] (per editing_styles/*.md).
+        """
         result = self._transcribe(video_path)
         segments = result.get("segments") or []
 
@@ -135,19 +153,20 @@ class Pipeline:
                     "word": str(seg.get("text", "")).strip(),
                 })
 
+        preset = self._CAPTION_PRESETS.get(style, self._CAPTION_PRESETS["subtitles"])
         header = (
             "[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n"
             "[V4+ Styles]\n"
             "Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, "
             "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
             "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-            # Alignment 5 = middle-center; white bold text, thick black outline
-            "Style: Words,Arial,80,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,2,0,1,6,1,5,40,40,60,1\n\n"
+            f"Style: Words,{preset['font']},{preset['size']},{preset['colour']},&H00000000,&H80000000,"
+            f"1,0,0,0,100,100,2,0,1,{preset['outline']},1,{preset['align']},40,40,{preset['margin_v']},1\n\n"
             "[Events]\n"
             "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
         )
 
-        words_per_event = 3
+        words_per_event = preset["words"]
         events = []
         for i in range(0, len(words), words_per_event):
             chunk = words[i:i + words_per_event]
@@ -161,7 +180,7 @@ class Pipeline:
             events.append(f"Dialogue: 0,{start},{end},Words,,0,0,0,,{text}")
 
         ass_path.write_text(header + "\n".join(events) + "\n", encoding="utf-8")
-        logger.info(f"Generated {len(events)} subtitle events -> {ass_path}")
+        logger.info(f"Generated {len(events)} subtitle events ({style}) -> {ass_path}")
         return ass_path
 
     # ------------------- clip rendering -------------------
@@ -179,10 +198,15 @@ class Pipeline:
     ) -> str:
         """Edit a single clip: trim, convert aspect ratio, apply style, save.
 
-        Styles:
-          original  - plain trim + optional aspect-ratio conversion
-          subtitles - 9:16 vertical + centered word-by-word captions burned in
-          blur      - 9:16 vertical with blurred background behind sharp video
+        Styles (from editing_styles/ archetypes):
+          original   - plain trim + optional aspect-ratio conversion
+          subtitles  - 9:16 vertical + centered word-by-word captions (generic)
+          blur       - 9:16 vertical with blurred background behind sharp video
+          hormozi    - 9:16 + kinetic word captions w/ yellow keyword highlights
+          podcast    - 9:16 dual split-screen (top/bottom speaker boxes) + captions
+          faceless   - 9:16 blurred bg + clean 2-line lower-third captions
+          gameplay   - 9:16 top 60% clip / bottom 40% blurred fill + center captions
+          corporate  - 9:16 minimal lower-third banner captions, no jump cuts
         """
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -191,14 +215,46 @@ class Pipeline:
         vf = None
         filter_complex = None
 
-        if style == "subtitles":
+        # Styles that burn in word-level captions via an ASS sidecar
+        caption_styles = {"subtitles", "hormozi", "podcast", "faceless", "gameplay", "corporate"}
+        ass_escaped = None
+        if style in caption_styles:
             ass_path = output_path.with_suffix(".ass")
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
-                None, self._generate_word_subtitles, video_path, clip_start, clip_end, ass_path
+                None, self._generate_word_subtitles, video_path, clip_start, clip_end, ass_path, style
             )
             # ffmpeg subtitles filter needs forward slashes and escaped drive colon
             ass_escaped = str(ass_path.resolve()).replace("\\", "/").replace(":", "\\:")
+
+        if style in ("subtitles", "hormozi"):
+            vf = f"crop=ih*9/16:ih,scale=1080:1920,subtitles='{ass_escaped}'"
+        elif style == "podcast":
+            # Dual split-screen: top half + bottom half of the source, captions on divider
+            filter_complex = (
+                "[0:v]split=2[top][bot];"
+                "[top]crop=iw:ih/2:0:0,scale=1080:960[t];"
+                "[bot]crop=iw:ih/2:0:ih/2,scale=1080:960[b];"
+                "[t][b]vstack=inputs=2[stacked];"
+                f"[stacked]subtitles='{ass_escaped}'"
+            )
+        elif style == "faceless":
+            # Blurred full-bg + sharp centered video + clean lower-third captions
+            filter_complex = (
+                "[0:v]split[main][bg];"
+                "[bg]crop=ih*9/16:ih,scale=1080:1920,gblur=sigma=30[bg2];"
+                "[main]scale=1080:1920:force_original_aspect_ratio=decrease[fg];"
+                f"[bg2][fg]overlay=(W-w)/2:(H-h)/2,subtitles='{ass_escaped}'"
+            )
+        elif style == "gameplay":
+            # Top 60% sharp video, bottom 40% blurred fill, captions on the boundary
+            filter_complex = (
+                "[0:v]split[main][bg];"
+                "[bg]crop=ih*9/16:ih,scale=1080:1920,gblur=sigma=40[bg2];"
+                "[main]scale=1080:1152:force_original_aspect_ratio=decrease[fg];"
+                f"[bg2][fg]overlay=(W-w)/2:0,subtitles='{ass_escaped}'"
+            )
+        elif style == "corporate":
             vf = f"crop=ih*9/16:ih,scale=1080:1920,subtitles='{ass_escaped}'"
         elif style == "blur":
             filter_complex = (
@@ -382,6 +438,33 @@ class Pipeline:
         return ('Pick the most engaging 30-60 second segment. Respond with JSON: '
                 '{"clip_start": float, "clip_end": float, "title": str}')
 
+    # Category -> render style, per editing_styles/index.md routing matrix.
+    # config.json "edit_styles" overrides these per category.
+    _CATEGORY_STYLE_MAP = {
+        "gaming": "hormozi",
+        "high_views": "hormozi",
+        "memes_funny": "hormozi",
+        "podcasts": "podcast",
+        "tech_news": "faceless",
+        "war_geopolitical": "faceless",
+        "sports": "gameplay",
+        "ufc": "gameplay",
+        "baby_rhymes": "corporate",
+    }
+
+    def _resolve_style(self, category: str = None) -> str:
+        """Resolve the render style for a category.
+
+        Priority: config.json edit_styles[category] > edit_styles["default"]
+        > _CATEGORY_STYLE_MAP > "subtitles".
+        """
+        edit_styles = self.config.get("edit_styles", {})
+        if category and category in edit_styles:
+            return edit_styles[category]
+        if "default" in edit_styles:
+            return edit_styles["default"]
+        return self._CATEGORY_STYLE_MAP.get(category, "subtitles")
+
     def _ask_llm(self, prompt: str) -> dict:
         """Call Ollama /api/generate and parse the JSON object from the response."""
         import requests
@@ -517,9 +600,8 @@ class Pipeline:
         filename = f"{task_id}_{safe_title}_{int(start)}_{int(end)}.mp4"
         output_path = output_dir / filename
 
-        # Edit style per category from config.json "edit_styles" (default: subtitles)
-        edit_styles = self.config.get("edit_styles", {})
-        style = edit_styles.get(category) or edit_styles.get("default", "subtitles")
+        # Edit style resolved via editing_styles/index.md routing (config.json overrides)
+        style = self._resolve_style(category)
 
         try:
             result = await self.edit_video_clip(

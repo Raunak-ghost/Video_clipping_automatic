@@ -1,8 +1,21 @@
 # Video Clipping - target channels
 # Format: category | channel name | channel_id   (one per line, # = comment)
 tech_news | Marques Brownlee | UCBJycsmduvYEL83R_U4JriQ
+tech_news | Linus Tech Tips | UCXuqSBlHAE6Xw-yeJA0Tunw
 podcasts | Huberman Lab | UC2D2CMWXMOVWx7giW1n3LIg
 podcasts | Diary of a CEO | UCGq-a57w-aPwyi3pW7XLiHw
+podcasts | Lex Fridman | UCSHZKyawb77ixDdsGog4iWA
+podcasts | Joe Rogan | UCzQUP1qoWDoEbmsQxvdjxgQ
 gaming | MrBeast | UCX6OQ3DkcsbYNE6H8uQQuVA
+gaming | PewDiePie | UC-lHJZR3Gqxm24_Vd_AJ5Yw
+gaming | IShowSpeed | UCWsDFcIhY2DBi3GB5uykGXA
+memes_funny | Sidemen | UCDogdKl7t7NHzQ95aEwkdMw
+high_views | MrBeast | UCX6OQ3DkcsbYNE6H8uQQuVA
+high_views | Sidemen | UCDogdKl7t7NHzQ95aEwkdMw
+sports | ESPN | UCiWLfSweyRNmLpgEHekhoAg
+ufc | UFC | UCvgfXK4nTYKudb0rFR6noLA
+baby_rhymes | Cocomelon | UCbCmjCuTUZos6Inko4u57UQ
+war_geopolitical | Johnny Harris | UCmGSJVG3mCRXVOP4yZrU1Dw
+war_geopolitical | RealLifeLore | UCP5tjEmvPItGyLhmjdwP7Ww
 # Add more below, e.g.:
 # gaming | Some Channel | UCxxxxxxxxxxxxxxxxxxxxxx
