@@ -264,7 +264,7 @@ class Pipeline:
             # Blurred full-bg + sharp centered video + clean lower-third captions
             filter_complex = (
                 "[0:v]split[main][bg];"
-                "[bg]crop=ih*9/16:ih,scale=1080:1920,gblur=sigma=30[bg2];"
+                "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gblur=sigma=30[bg2];"
                 "[main]scale=1080:1920:force_original_aspect_ratio=decrease[fg];"
                 f"[bg2][fg]overlay=(W-w)/2:(H-h)/2,subtitles='{ass_escaped}'"
             )
@@ -272,22 +272,26 @@ class Pipeline:
             # Top 60% sharp video, bottom 40% blurred fill, captions on the boundary
             filter_complex = (
                 "[0:v]split[main][bg];"
-                "[bg]crop=ih*9/16:ih,scale=1080:1920,gblur=sigma=40[bg2];"
+                "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gblur=sigma=40[bg2];"
                 "[main]scale=1080:1152:force_original_aspect_ratio=decrease[fg];"
                 f"[bg2][fg]overlay=(W-w)/2:0,subtitles='{ass_escaped}'"
             )
         elif style == "corporate":
-            vf = f"crop=ih*9/16:ih,scale=1080:1920,subtitles='{ass_escaped}'"
+            vf = (
+                "scale=1080:1920:force_original_aspect_ratio=increase,"
+                "crop=1080:1920,"
+                f"subtitles='{ass_escaped}'"
+            )
         elif style == "blur":
             filter_complex = (
                 "[0:v]split[main][bg];"
-                "[bg]crop=ih*9/16:ih,scale=1080:1920,gblur=sigma=30[bg2];"
+                "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gblur=sigma=30[bg2];"
                 "[main]scale=1080:1920:force_original_aspect_ratio=decrease[fg];"
                 "[bg2][fg]overlay=(W-w)/2:(H-h)/2"
             )
         elif aspect_ratio == "9:16":
-            # Vertical: crop to 9:16 center, then scale
-            vf = "crop=ih*9/16:ih,scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black"
+            # Vertical: scale to cover the 9:16 frame, then center-crop
+            vf = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920"
         elif aspect_ratio == "16:9":
             vf = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black"
 
