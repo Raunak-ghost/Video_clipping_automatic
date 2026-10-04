@@ -4,6 +4,7 @@ Chooses the most recent video longer than 3 minutes from the 5 most recent
 uploads.
 """
 import json
+from typing import Any, Dict
 
 from yt_dlp import YoutubeDL
 
@@ -16,14 +17,14 @@ CHANNELS = {
 
 def list_videos(channel_id: str, limit: int = 5):
     url = f"https://www.youtube.com/channel/{channel_id}/videos"
-    opts = {
+    opts: Dict[str, Any] = {
         "quiet": True,
         "no_warnings": True,
         "extract_flat": True,
         "playlistend": limit,
         "skip_download": True,
     }
-    with YoutubeDL(opts) as ydl:
+    with YoutubeDL(opts) as ydl:  # type: ignore[arg-type]
         info = ydl.extract_info(url, download=False)
     entries = [e for e in (info.get("entries") or []) if e and e.get("id")]
     entries = [e for e in entries if e.get("live_status") not in ("is_upcoming", "is_live")]
@@ -32,7 +33,8 @@ def list_videos(channel_id: str, limit: int = 5):
     # Flat entries usually carry duration; fall back to per-video metadata if not.
     if entries and all(e.get("duration") is None for e in entries):
         filled = []
-        with YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True}) as ydl:
+        meta_opts: Dict[str, Any] = {"quiet": True, "no_warnings": True, "skip_download": True}
+        with YoutubeDL(meta_opts) as ydl:  # type: ignore[arg-type]
             for e in entries:
                 try:
                     vi = ydl.extract_info(
@@ -72,12 +74,15 @@ def main():
             print(f"  {e.get('id')}  {f'{dur}s' if dur else '?':>9}  {e.get('title')}")
         chosen = pick(entries)
         if chosen:
-            print(f"  -> chosen: {chosen['id']} ({chosen['duration']}s) {chosen['title']}")
+            chosen_id = chosen.get("id")
+            chosen_title = chosen.get("title")
+            chosen_duration = chosen.get("duration")
+            print(f"  -> chosen: {chosen_id} ({chosen_duration}s) {chosen_title}")
             report[name] = {
-                "video_id": chosen["id"],
-                "title": chosen["title"],
-                "duration": chosen["duration"],
-                "url": f"https://www.youtube.com/watch?v={chosen['id']}",
+                "video_id": chosen_id,
+                "title": chosen_title,
+                "duration": chosen_duration,
+                "url": f"https://www.youtube.com/watch?v={chosen_id}",
             }
         else:
             print("  -> no video longer than 3min in top 5")

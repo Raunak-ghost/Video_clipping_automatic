@@ -17,5 +17,9 @@ ufc | UFC | UCvgfXK4nTYKudb0rFR6noLA
 baby_rhymes | Cocomelon | UCbCmjCuTUZos6Inko4u57UQ
 war_geopolitical | Johnny Harris | UCmGSJVG3mCRXVOP4yZrU1Dw
 war_geopolitical | RealLifeLore | UCP5tjEmvPItGyLhmjdwP7Ww
+anime | Gigguk | UC7dF9qfBMXrSlaaFFDvV_Yg
+anime | Super Eyepatch Wolf | UCtGoikgbxP4F3rgI9PldI9g
+anime | Totally Not Mark | UCv3LuuW8auzYw1SdLmiLRAw
+anime | Mother's Basement | UCBs2Y3i14e1NWQxOGliatmg
 # Add more below, e.g.:
 # gaming | Some Channel | UCxxxxxxxxxxxxxxxxxxxxxx

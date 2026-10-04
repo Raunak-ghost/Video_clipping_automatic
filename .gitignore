@@ -44,3 +44,17 @@ whisper.cpp/
 # --- OS junk ---
 Thumbs.db
 .DS_Store
+
+# --- Study / review / temp folders ---
+_review/
+insta_reel_to_study/
+shorts_study/
+movies/
+upload_metadata/
+
+# --- One-off helper scripts (not part of the pipeline) ---
+get_latest.py
+find_public.py
+resolve_handle.py
+verify_channels.py
+batch_clips.py

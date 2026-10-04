@@ -56,9 +56,9 @@ def load_target_channels():
 
 # Function to check if a video is long-format (> 3 minutes)
 def is_long_format(video_url):
-    ydl_opts = {'quiet': True, 'noplaylist': True, 'extract_flat': False}
+    ydl_opts: dict = {'quiet': True, 'noplaylist': True, 'extract_flat': False}
     try:
-        with YoutubeDL(ydl_opts) as ydl:
+        with YoutubeDL(ydl_opts) as ydl:  # type: ignore[arg-type]
             info = ydl.extract_info(video_url, download=False)
             duration = info.get('duration', 0) or 0
             if duration and duration > 180:
@@ -93,7 +93,7 @@ async def run_phase1_ingestion(video_url, video_id, category=None, channel_name=
         logger.info("No active Celery worker found. Processing video directly via Pipeline...")
         try:
             pipeline = Pipeline(db=db)
-            result = await pipeline.process_video(video_url, task_id=task_id, category=category, channel_name=channel_name)
+            result = await pipeline.process_video(video_url, task_id=task_id, category=category or "", channel_name=channel_name or "")
             logger.info("Task %s processing result: %s", task_id, result.get('status'))
         except Exception as e:
             logger.error("Direct pipeline processing failed for %s: %s", task_id, e)
@@ -132,9 +132,9 @@ async def check_for_new_videos_async():
     for category, channels in categories.items():
         for name, channel_id in channels.items():
             channel_url = f"https://www.youtube.com/channel/{channel_id}/videos"
-            ydl_opts = {'quiet': True, 'extract_flat': True, 'playlistend': 5}
+            ydl_opts: dict = {'quiet': True, 'extract_flat': True, 'playlistend': 5}
             try:
-                with YoutubeDL(ydl_opts) as ydl:
+                with YoutubeDL(ydl_opts) as ydl:  # type: ignore[arg-type]
                     info = ydl.extract_info(channel_url, download=False)
             except Exception as e:
                 logger.error("[%s] [%s] Error listing channel: %s", category, name, e)

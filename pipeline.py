@@ -41,7 +41,7 @@ class Pipeline:
     def _sanitize_filename(self, name: str) -> str:
         return "".join(c for c in name if c.isalnum() or c in (' ', '_', '-', '.')).strip()
 
-    async def process_video(self, video_url: str, task_id: str, category: str = None, channel_name: str = None) -> Dict[str, Any]:
+    async def process_video(self, video_url: str, task_id: str, category: Optional[str] = None, channel_name: Optional[str] = None) -> Dict[str, Any]:
         """Full pipeline: download → find highlights → clip → upload."""
         self.db.update_task_status(task_id, "processing", progress=10.0)
         
@@ -118,6 +118,12 @@ class Pipeline:
         "gameplay":  dict(font="Arial", size=72, colour="&H00FFFFFF", outline=6, align=5, margin_v=0, words=3),
         # Corporate: minimal lower-third banner
         "corporate": dict(font="Arial", size=44, colour="&H00FFFFFF", outline=1, align=2, margin_v=120, words=10),
+        # Kids: big rounded friendly captions, bright yellow, thick outline, bottom-screen
+        "kids":      dict(font="Arial Rounded MT Bold", size=92, colour="&H0000D7FF", outline=8, align=2, margin_v=140, words=4),
+        # Anime recap: bold white bottom captions over full-screen footage
+        "anime":     dict(font="Arial", size=76, colour="&H00FFFFFF", outline=6, align=2, margin_v=150, words=4),
+        # Movie recap: bold white center captions over full-screen footage
+        "movie":     dict(font="Arial", size=80, colour="&H00FFFFFF", outline=6, align=5, margin_v=0, words=4),
     }
 
     def _generate_word_subtitles(self, video_path: str, clip_start: float, clip_end: float, ass_path: Path, style: str = "subtitles") -> Path:
@@ -166,7 +172,7 @@ class Pipeline:
             "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
         )
 
-        words_per_event = preset["words"]
+        words_per_event = int(preset["words"])
         events = []
         for i in range(0, len(words), words_per_event):
             chunk = words[i:i + words_per_event]
@@ -192,14 +198,13 @@ class Pipeline:
         clip_end: float,
         output_path: str,
         aspect_ratio: str = "original",
-        task_id: str = None,
-        title: str = None,
-        style: str = "original",
+        task_id: Optional[str] = None,
+        title: Optional[str] = None,
+        style: str = "subtitles",
     ) -> str:
         """Edit a single clip: trim, convert aspect ratio, apply style, save.
 
-        Styles (from editing_styles/ archetypes):
-          original   - plain trim + optional aspect-ratio conversion
+        Styles (from editing_styles/ archetypes) - all transformative:
           subtitles  - 9:16 vertical + centered word-by-word captions (generic)
           blur       - 9:16 vertical with blurred background behind sharp video
           hormozi    - 9:16 + kinetic word captions w/ yellow keyword highlights
@@ -207,19 +212,30 @@ class Pipeline:
           faceless   - 9:16 blurred bg + clean 2-line lower-third captions
           gameplay   - 9:16 top 60% clip / bottom 40% blurred fill + center captions
           corporate  - 9:16 minimal lower-third banner captions, no jump cuts
+          kids       - 9:16 big rounded colorful center captions (nursery rhymes)
+          anime      - 9:16 full-screen footage + bold white bottom captions (recap)
+          movie      - 9:16 full-screen footage + bold white center captions (recap)
+
+        Note: the old "original" plain-trim style was removed - an unedited
+        copy-paste clip is bound to be copyright-flagged. Any request for it
+        falls back to "subtitles".
         """
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        if style == "original":
+            logger.warning("style 'original' removed (no transformation) - using 'subtitles'")
+            style = "subtitles"
+
+        out_path: Path = Path(output_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
 
         duration = clip_end - clip_start
         vf = None
         filter_complex = None
 
         # Styles that burn in word-level captions via an ASS sidecar
-        caption_styles = {"subtitles", "hormozi", "podcast", "faceless", "gameplay", "corporate"}
+        caption_styles = {"subtitles", "hormozi", "podcast", "faceless", "gameplay", "corporate", "kids", "anime", "movie"}
         ass_escaped = None
         if style in caption_styles:
-            ass_path = output_path.with_suffix(".ass")
+            ass_path = out_path.with_suffix(".ass")
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
                 None, self._generate_word_subtitles, video_path, clip_start, clip_end, ass_path, style
@@ -227,8 +243,14 @@ class Pipeline:
             # ffmpeg subtitles filter needs forward slashes and escaped drive colon
             ass_escaped = str(ass_path.resolve()).replace("\\", "/").replace(":", "\\:")
 
-        if style in ("subtitles", "hormozi"):
-            vf = f"crop=ih*9/16:ih,scale=1080:1920,subtitles='{ass_escaped}'"
+        if style in ("subtitles", "hormozi", "kids", "anime", "movie"):
+            # Full-screen 9:16 fill: scale to COVER the frame, then center-crop.
+            # (scale-then-crop avoids the tiny-sliver bug on low-res landscape sources)
+            vf = (
+                "scale=1080:1920:force_original_aspect_ratio=increase,"
+                "crop=1080:1920,"
+                f"subtitles='{ass_escaped}'"
+            )
         elif style == "podcast":
             # Dual split-screen: top half + bottom half of the source, captions on divider
             filter_complex = (
@@ -376,7 +398,9 @@ class Pipeline:
             logger.info(f"[{task_id}] Trying download with {label}")
             try:
                 def download(opts=opts):
-                    with YoutubeDL(opts) as ydl:
+                    if YoutubeDL is None:
+                        raise RuntimeError("yt-dlp not installed")
+                    with YoutubeDL(opts) as ydl:  # type: ignore[misc]
                         info = ydl.extract_info(video_url, download=True)
                         return ydl.prepare_filename(info)
 
@@ -394,7 +418,7 @@ class Pipeline:
 
         return None
 
-    async def _find_highlights(self, video_path: str, task_id: str, category: str = None) -> list:
+    async def _find_highlights(self, video_path: str, task_id: str, category: Optional[str] = None) -> list:
         """Find highlights: Whisper transcript -> Ollama LLM pick -> heuristic fallback."""
         try:
             highlights = await self._find_highlights_ai(video_path, task_id, category)
@@ -423,7 +447,7 @@ class Pipeline:
         cache[video_path] = result
         return result
 
-    def _load_instructions(self, category: str = None) -> str:
+    def _load_instructions(self, category: Optional[str] = None) -> str:
         """Load category-specific LLM instructions from instructions/<category>.md,
         falling back to instructions/default.md then editing_instructions.md."""
         candidates = []
@@ -449,10 +473,16 @@ class Pipeline:
         "war_geopolitical": "faceless",
         "sports": "gameplay",
         "ufc": "gameplay",
-        "baby_rhymes": "corporate",
+        "baby_rhymes": "kids",
+        "anime": "anime",
+        "anime_recap": "anime",
+        "movie": "movie",
+        "movies": "movie",
+        "movie_recap": "movie",
+        "film": "movie",
     }
 
-    def _resolve_style(self, category: str = None) -> str:
+    def _resolve_style(self, category: Optional[str] = None) -> str:
         """Resolve the render style for a category.
 
         Priority: config.json edit_styles[category] > edit_styles["default"]
@@ -463,7 +493,7 @@ class Pipeline:
             return edit_styles[category]
         if "default" in edit_styles:
             return edit_styles["default"]
-        return self._CATEGORY_STYLE_MAP.get(category, "subtitles")
+        return self._CATEGORY_STYLE_MAP.get(category or "", "subtitles")
 
     def _ask_llm(self, prompt: str) -> dict:
         """Call Ollama /api/generate and parse the JSON object from the response."""
@@ -487,7 +517,7 @@ class Pipeline:
             raise ValueError(f"LLM returned no JSON: {text[:200]}")
         return json.loads(text[obj_start:obj_end + 1])
 
-    async def _find_highlights_ai(self, video_path: str, task_id: str, category: str = None) -> list:
+    async def _find_highlights_ai(self, video_path: str, task_id: str, category: Optional[str] = None) -> list:
         """Transcribe with Whisper, then ask the LLM (category instructions) for the best clip."""
         loop = asyncio.get_event_loop()
 
@@ -585,8 +615,8 @@ class Pipeline:
         end: float,
         task_id: str,
         title: str,
-        category: str = None,
-        channel_name: str = None
+        category: Optional[str] = None,
+        channel_name: Optional[str] = None
     ) -> Optional[str]:
         """Create a single clip from video segment."""
         date_str = datetime.now().strftime("%Y-%m-%d")
@@ -614,7 +644,26 @@ class Pipeline:
                 title=title,
                 style=style,
             )
-            
+
+            # Copyright / near-duplicate check against the local reference library.
+            # Only runs when copyright_reference.json exists and has entries.
+            copyright_status = "skipped"
+            try:
+                from copyright_check import check_clip, _load_db
+                if _load_db():
+                    check = await asyncio.get_event_loop().run_in_executor(
+                        None, check_clip, result
+                    )
+                    copyright_status = check["status"]
+                    if check["status"] == "flagged":
+                        labels = ", ".join(m["label"] for m in check["matches"])
+                        logger.warning(
+                            f"[{task_id}] COPYRIGHT FLAG: {Path(result).name} "
+                            f"matches reference: {labels}"
+                        )
+            except Exception as ce:
+                logger.debug(f"[{task_id}] copyright check skipped: {ce}")
+
             # Save metadata to DB
             self.db.create_clip_metadata(
                 task_id=task_id,
@@ -627,7 +676,15 @@ class Pipeline:
                 category=category,
                 channel=channel_name,
             )
-            
+
+            # Write paste-ready YouTube upload metadata (.txt) alongside
+            try:
+                from metadata_gen import write_metadata_txt
+                src_url = f"https://www.youtube.com/watch?v={task_id.replace('trigger_', '')}" if task_id.startswith("trigger_") else None
+                write_metadata_txt(title, category, channel_name, src_url, Path(result).name)
+            except Exception as me:
+                logger.debug(f"[{task_id}] metadata txt skipped: {me}")
+
             return result
         except Exception as e:
             logger.error(f"Clip creation failed: {e}")
@@ -698,9 +755,19 @@ class Pipeline:
                 logger.info(f"Upload {os.path.basename(clip_path)}: {int(status.progress() * 100)}%")
         return response
 
-    async def _upload_clips(self, clip_paths: list, task_id: str, category: str = None, channel_name: str = None) -> list:
-        """Upload clips to YouTube (Data API v3). Falls back to local-only on failure."""
+    async def _upload_clips(self, clip_paths: list, task_id: str, category: Optional[str] = None, channel_name: Optional[str] = None) -> list:
+        """Upload clips to YouTube (Data API v3). Falls back to local-only on failure.
+
+        Set "uploads_enabled": true in config.json to actually upload. Default is
+        false - clips are saved locally for manual upload.
+        """
         results = []
+
+        # Master switch: uploads disabled by default (clips saved locally)
+        if not self.config.get("uploads_enabled", False):
+            logger.info(f"[{task_id}] Uploads disabled - clips saved locally")
+            return [{"platform": "youtube", "status": "saved_locally", "clip_path": p} for p in clip_paths]
+
         connectors = self.config.get("upload_connectors", {})
         youtube_config = connectors.get("youtube", {})
 

@@ -159,7 +159,7 @@ def create_app() -> FastAPI:
         clip_start = float(body.get("clip_start", 0.0))
         clip_end = float(body.get("clip_end", 60.0))
         aspect_ratio = body.get("aspect_ratio", "original")  # "original", "9:16", "16:9"
-        style = body.get("style", "original")  # "original", "subtitles", "blur"
+        style = body.get("style", "subtitles")  # subtitles/hormozi/podcast/faceless/gameplay/corporate/blur
         title = body.get("title")
         platform = body.get("platform", "youtube").lower().strip()
 
@@ -756,8 +756,10 @@ ADMIN_DASHBOARD_HTML = """<!DOCTYPE html>
           <option value="faceless">Faceless - blurred bg + clean lower-thirds</option>
           <option value="gameplay">Gameplay - top 60% clip / bottom 40% fill</option>
           <option value="corporate">Corporate - minimal lower-third banner</option>
+          <option value="kids">Kids - big rounded colorful captions (rhymes)</option>
+          <option value="anime">Anime Recap - full-screen + white bottom captions</option>
+          <option value="movie">Movie Recap - full-screen + white center captions</option>
           <option value="blur">Blur - blurred background vertical (9:16)</option>
-          <option value="original">Original - plain trim</option>
         </select>
       </div>
 

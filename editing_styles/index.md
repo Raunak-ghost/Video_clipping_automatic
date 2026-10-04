@@ -12,8 +12,14 @@ This file is the primary router for the video editing pipeline. When processing 
   -> Load `editing_styles/editing_faceless.md`
 - IF category == "Streamer Highlight", "Gaming", "Long Monologue without Visuals":
   -> Load `editing_styles/editing_gameplay.md`
-- IF category == "B2B", "Webinar", "Corporate", "SaaS Showcase", "baby_rhymes":
+- IF category == "B2B", "Webinar", "Corporate", "SaaS Showcase":
   -> Load `editing_styles/editing_corporate.md`
+- IF category == "Kids", "Nursery Rhymes", "Baby", "Toddler", "baby_rhymes":
+  -> Load `editing_styles/editing_kids.md`
+- IF category == "Anime", "Anime Recap", "Manga", "Episode Recap", "anime":
+  -> Load `editing_styles/editing_anime.md`
+- IF category == "Movie", "Film", "Movie Recap", "Film Recap", "movie":
+  -> Load `editing_styles/editing_movie.md`
 
 ## Pipeline Execution Flow
 1. `trigger_engine.py` identifies source video URL.

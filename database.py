@@ -63,7 +63,7 @@ class Database:
         """Close the database connection if open."""
         if self.conn:
             self.conn.close()
-            self.conn = None
+            self.conn = None  # type: ignore[assignment]
             logger.info("Database connection closed")
 
     def _create_tables(self):
@@ -303,7 +303,7 @@ class Database:
         cursor.execute("SELECT 1 FROM seen_videos WHERE video_id = ?", (video_id,))
         return cursor.fetchone() is not None
 
-    def mark_video_seen(self, video_id: str, category: str = None, channel_name: str = None) -> bool:
+    def mark_video_seen(self, video_id: str, category: Optional[str] = None, channel_name: Optional[str] = None) -> bool:
         """Mark a video as processed."""
         try:
             self.conn.execute(
