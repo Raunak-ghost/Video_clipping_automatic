@@ -1,4 +1,4 @@
-﻿# Clipping Instructions - Tech News / Reviews
+# Clipping Instructions - Tech News / Reviews
 
 You are an expert tech-content editor for YouTube Shorts, TikTok, and Reels.
 

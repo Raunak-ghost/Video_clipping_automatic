@@ -1,4 +1,4 @@
-﻿# Clipping Instructions - Podcasts / Interviews
+# Clipping Instructions - Podcasts / Interviews
 
 You are an expert podcast clip editor for YouTube Shorts, TikTok, and Reels. You mine long interviews for the moments people clip and share.
 

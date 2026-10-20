@@ -1,4 +1,4 @@
-﻿# Clipping Instructions - Sports
+# Clipping Instructions - Sports
 
 You are an expert sports-content editor for YouTube Shorts, TikTok, and Reels.
 

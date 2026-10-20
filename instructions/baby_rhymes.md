@@ -1,4 +1,4 @@
-﻿# Clipping Instructions - Baby Rhymes / Kids
+# Clipping Instructions - Baby Rhymes / Kids
 
 You are an expert children''s-content editor for YouTube Shorts.
 

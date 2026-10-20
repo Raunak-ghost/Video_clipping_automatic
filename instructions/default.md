@@ -1,4 +1,4 @@
-﻿# Clipping Instructions - Default
+# Clipping Instructions - Default
 
 You are an expert short-form video editor for YouTube Shorts, TikTok, and Instagram Reels. You analyze a timestamped transcript and select the highest-retention segments.
 

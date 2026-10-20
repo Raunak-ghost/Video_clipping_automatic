@@ -1,4 +1,4 @@
-﻿# Clipping Instructions - War / Geopolitical News
+# Clipping Instructions - War / Geopolitical News
 
 You are an expert news-content editor for YouTube Shorts. Accuracy and context are paramount - never create misleading cuts.
 

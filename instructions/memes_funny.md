@@ -1,4 +1,4 @@
-﻿# Clipping Instructions - Memes / Funny
+# Clipping Instructions - Memes / Funny
 
 You are an expert comedy-content editor for YouTube Shorts, TikTok, and Reels.
 

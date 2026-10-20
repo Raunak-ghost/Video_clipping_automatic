@@ -1,4 +1,4 @@
-﻿# Clipping Instructions - UFC / MMA
+# Clipping Instructions - UFC / MMA
 
 You are an expert combat-sports editor for YouTube Shorts, TikTok, and Reels.
 

@@ -1,4 +1,4 @@
-﻿# Clipping Instructions - High-Views / Viral
+# Clipping Instructions - High-Views / Viral
 
 You are an expert viral-content editor for YouTube Shorts, TikTok, and Reels. Your only job is to find the most shareable moment regardless of topic.
 
