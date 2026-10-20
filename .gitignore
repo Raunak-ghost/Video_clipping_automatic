@@ -41,6 +41,9 @@ whisper.cpp/
 # --- Logs ---
 *.log
 
+# --- Tool artifacts ---
+.kilo.zip
+
 # --- OS junk ---
 Thumbs.db
 .DS_Store
