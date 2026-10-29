@@ -65,6 +65,19 @@ def main():
     parser.add_argument("--height", type=int, default=480, help="Video height (default: 480)")
     parser.add_argument("--frames", type=int, default=81, help="Video frame count (81 ~= 3.5s at 24fps)")
     parser.add_argument("--fps", type=int, default=24, help="Frames per second")
+    parser.add_argument(
+        "--duration",
+        type=float,
+        default=0.0,
+        help="Target video duration in seconds (e.g. 60 for 1 minute). When >= 10, enables multi-scene storyboard composition.",
+    )
+    parser.add_argument(
+        "--scenes",
+        type=int,
+        default=5,
+        help="Number of progressive story scenes to generate when duration >= 10 (default: 5)",
+    )
+    parser.add_argument("--audio", type=str, default="", help="Optional audio/music track path")
     parser.add_argument("--list-styles", action="store_true", help="List all evolved styles and exit")
     parser.add_argument("--check", action="store_true", help="Run preflight server/model checks and exit")
 
@@ -108,7 +121,89 @@ def main():
         print(f"[FATAL] Server not available. Check {SERVER_LOG}", file=sys.stderr)
         return 1
 
-    # 2. Build workflow graph
+    # Multi-scene Storyboard Generation (for 1-minute+ videos)
+    if args.duration >= 10:
+        from pipelines.generative.composer import compose_long_video, create_nursery_subtitles
+        num_scenes = max(2, args.scenes)
+        print(f"[*] Multi-Scene Mode: Generating {num_scenes} sequential scenes for {args.duration:.0f}s final clip")
+        
+        scene_modifiers = [
+            "opening establishing scene, cheerful morning sunshine, cute characters",
+            "playful action and movement, joyful characters playing together",
+            "curious exploration, lush colorful flowers and sparkling details",
+            "dancing and celebrating together, vibrant playful energy",
+            "happy ending finale, rainbow in the sky and golden sunset glow",
+        ]
+        
+        shot_paths = []
+        for i in range(num_scenes):
+            mod = scene_modifiers[i % len(scene_modifiers)]
+            scene_prompt = f"{prompt_text}. {mod}"
+            print(f"\n[Scene {i+1}/{num_scenes}] Prompt: {scene_prompt}")
+            
+            wf = style_handler.generate(
+                prompt=scene_prompt,
+                seed=args.seed + (i * 137),
+                steps=args.steps,
+                cfg=args.cfg,
+                width=args.width,
+                height=args.height,
+                frames=args.frames,
+                fps=args.fps,
+            )
+            pid = client.submit_prompt(wf)
+            entry, el = client.poll_execution(pid)
+            out = client.extract_output_path(entry)
+            if out and out.exists():
+                shot_paths.append(out)
+                print(f"[OK] Scene {i+1} saved: {out}")
+            else:
+                print(f"[WARN] Scene {i+1} did not produce an output file", file=sys.stderr)
+
+        if not shot_paths:
+            print("[ERROR] No scene videos were generated.", file=sys.stderr)
+            return 1
+
+        print(f"\n[*] Assembling {len(shot_paths)} scenes into {args.duration:.0f}s video with music and subtitles...")
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        clips_dir = Path("clips")
+        clips_dir.mkdir(exist_ok=True)
+        final_output = clips_dir / f"{args.style}_video_{timestamp}_{int(args.duration)}s.mp4"
+        
+        # Audio selection
+        audio_file = Path(args.audio) if args.audio else Path("downloads/nursery_rhyme_60s.m4a")
+        
+        # Subtitle creation
+        sub_file = clips_dir / f"temp_{timestamp}.ass"
+        per_scene = args.duration / len(shot_paths)
+        lyrics = []
+        for i in range(len(shot_paths)):
+            t_start = i * per_scene + 0.5
+            t_end = (i + 1) * per_scene - 0.5
+            lyrics.append({
+                "start": t_start,
+                "end": t_end,
+                "text": f"Scene {i+1}: {prompt_text[:30]}..." if i > 0 else prompt_text[:40]
+            })
+        create_nursery_subtitles(lyrics, sub_file, style=args.style)
+        
+        compose_long_video(
+            shot_paths=shot_paths,
+            audio_path=audio_file if audio_file.exists() else None,
+            output_path=final_output,
+            target_duration=args.duration,
+            subtitles_path=sub_file,
+            aspect_ratio="9:16",
+        )
+        
+        print("\n" + "=" * 70)
+        print(f" [SUCCESS] Multi-Scene Video Generated: {final_output.name}")
+        print(f" [OUTPUT]   {final_output.resolve()}")
+        print(f" [DURATION] {args.duration:.0f} seconds (9:16 vertical 1080x1920)")
+        print("=" * 70)
+        return 0
+
+    # Single-shot Generation (standard mode)
     workflow = style_handler.generate(
         prompt=prompt_text,
         seed=args.seed,
